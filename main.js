@@ -357,6 +357,13 @@ function registerIpc() {
     await saveAccounts();
     return importedAccounts;
   });
+
+  ipcMain.handle('app:startup-status', () => app.getLoginItemSettings().openAtLogin);
+  ipcMain.handle('app:set-startup', (_event, enabled) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid startup setting');
+    app.setLoginItemSettings({ openAtLogin: enabled });
+    return app.getLoginItemSettings().openAtLogin;
+  });
 }
 
 app.whenReady().then(async () => {

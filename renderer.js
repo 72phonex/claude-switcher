@@ -234,6 +234,14 @@ $('import-config').addEventListener('click', async () => {
     window.alert(`Could not import settings: ${error.message}`);
   }
 });
+$('startup-toggle').addEventListener('click', async () => {
+  try {
+    const enabled = await window.claudeSwitcher.setStartup(!(await window.claudeSwitcher.startupStatus()));
+    $('startup-toggle').textContent = enabled ? 'Startup: on' : 'Startup: off';
+  } catch (error) {
+    window.alert(`Could not update startup setting: ${error.message}`);
+  }
+});
 $('sidebar-toggle').addEventListener('click', () => $('sidebar').classList.toggle('collapsed'));
 $('project-history-button').addEventListener('click', async () => {
   await window.claudeSwitcher.accounts.hideView();
@@ -270,4 +278,7 @@ document.addEventListener('keydown', (event) => {
   }
 });
 init().catch((error) => window.alert(`Could not start Claude Switcher: ${error.message}`));
+window.claudeSwitcher.startupStatus()
+  .then((enabled) => { $('startup-toggle').textContent = enabled ? 'Startup: on' : 'Startup: off'; })
+  .catch((error) => console.warn(`Could not read startup setting: ${error.message}`));
 setInterval(refreshUsage, 10000);
