@@ -17,5 +17,7 @@ contextBridge.exposeInMainWorld('claudeSwitcher', {
     history: () => ipcRenderer.invoke('account-view:history'),
     openHistory: (url) => ipcRenderer.invoke('account-view:open-history', url)
   },
-  openExternal: (url) => ipcRenderer.invoke('app:open-external', url)
+  openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
+  exportConfig: () => ipcRenderer.invoke('config:export'),
+  importConfig: () => ipcRenderer.invoke('config:import')
 });

@@ -215,6 +215,25 @@ $('toggle-reminders').addEventListener('click', async () => {
 $('reload-page').addEventListener('click', () => window.claudeSwitcher.accounts.reloadView());
 $('error-reload').addEventListener('click', () => window.claudeSwitcher.accounts.reloadView());
 $('open-external').addEventListener('click', () => window.claudeSwitcher.openExternal('https://claude.ai/'));
+$('export-config').addEventListener('click', async () => {
+  try {
+    if (await window.claudeSwitcher.exportConfig()) window.alert('Settings exported without login sessions or cookies.');
+  } catch (error) {
+    window.alert(`Could not export settings: ${error.message}`);
+  }
+});
+$('import-config').addEventListener('click', async () => {
+  try {
+    const imported = await window.claudeSwitcher.importConfig();
+    if (!imported) return;
+    state.accounts.push(...imported);
+    imported.forEach(createView);
+    renderAccounts();
+    window.alert(`${imported.length} account setting(s) imported. Sign in to each new session.`);
+  } catch (error) {
+    window.alert(`Could not import settings: ${error.message}`);
+  }
+});
 $('sidebar-toggle').addEventListener('click', () => $('sidebar').classList.toggle('collapsed'));
 $('project-history-button').addEventListener('click', async () => {
   await window.claudeSwitcher.accounts.hideView();

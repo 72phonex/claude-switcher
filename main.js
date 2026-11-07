@@ -1,4 +1,4 @@
-const { app, BrowserWindow, BrowserView, Menu, nativeImage, Notification, Tray, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, BrowserView, dialog, Menu, nativeImage, Notification, Tray, ipcMain, session, shell } = require('electron');
 const crypto = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs/promises');
@@ -314,6 +314,48 @@ function registerIpc() {
       return shell.openExternal(url);
     }
     return false;
+  });
+
+  ipcMain.handle('config:export', async () => {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export Claude Switcher settings',
+      defaultPath: 'claude-switcher-settings.json',
+      filters: [{ name: 'JSON files', extensions: ['json'] }]
+    });
+    if (result.canceled || !result.filePath) return false;
+    const safeAccounts = accounts.map(({ name, reminderEnabled, createdAt }) => ({
+      name,
+      reminderEnabled: reminderEnabled !== false,
+      createdAt
+    }));
+    await fs.writeFile(result.filePath, JSON.stringify({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      accounts: safeAccounts
+    }, null, 2), 'utf8');
+    return true;
+  });
+
+  ipcMain.handle('config:import', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Import Claude Switcher settings',
+      properties: ['openFile'],
+      filters: [{ name: 'JSON files', extensions: ['json'] }]
+    });
+    if (result.canceled || !result.filePaths[0]) return false;
+    const imported = JSON.parse(await fs.readFile(result.filePaths[0], 'utf8'));
+    if (!imported || imported.version !== 1 || !Array.isArray(imported.accounts)) {
+      throw new Error('Unsupported settings file');
+    }
+    const importedAccounts = imported.accounts
+      .filter((account) => account && typeof account.name === 'string' && account.name.trim())
+      .map((account) => ({
+        ...makeAccount(account.name),
+        reminderEnabled: account.reminderEnabled !== false
+      }));
+    accounts.push(...importedAccounts);
+    await saveAccounts();
+    return importedAccounts;
   });
 }
 
