@@ -11,6 +11,10 @@ session, so switching accounts does not require signing in again.
 - Account rename, session clearing, and removal controls
 - Local token-usage estimates and limit indicators
 - Desktop notification when a detected Claude usage limit is restored
+- Optional system-tray background mode and launch-at-startup support
+- Automatic usage refresh, account health indicators, and keyboard shortcuts
+- Privacy-safe settings export/import without cookies or login sessions
+- GitHub release checks from inside the app
 - Recent Claude chat and project history
 - Open the active Claude session in the system browser
 - Content Security Policy, context isolation, and disabled renderer Node.js access
@@ -35,6 +39,14 @@ When Claude exposes a future reset time while an account is limited, the app
 schedules a local desktop notification for that account. The reminder depends
 on Claude showing a parseable reset time; it does not contact a separate
 notification service.
+
+## Shortcuts
+
+- `Ctrl+1` through `Ctrl+9`: switch to an account by sidebar order
+- `Ctrl+R`: reload the active Claude session
+
+Closing the window keeps the app in the system tray so reminders can continue.
+Use the tray menu to reopen the window or quit completely.
 
 ## Privacy
 
@@ -62,6 +74,13 @@ node --check main.js
 node --check preload.js
 node --check renderer.js
 ```
+
+## Roadmap
+
+- Installer and signed release builds
+- Optional configurable reminder lead time
+- More detailed session diagnostics
+- Automated end-to-end coverage for account switching
 
 ## License
 
