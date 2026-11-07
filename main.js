@@ -1,4 +1,4 @@
-const { app, BrowserWindow, BrowserView, Notification, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, BrowserView, Menu, nativeImage, Notification, Tray, ipcMain, session, shell } = require('electron');
 const crypto = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs/promises');
@@ -15,6 +15,8 @@ const accountViews = new Map();
 let activeViewId;
 const accountUsage = new Map();
 const resetTimers = new Map();
+let tray;
+let isQuitting = false;
 
 async function loadAccounts() {
   try {
@@ -86,7 +88,27 @@ function createWindow() {
     mainWindow.maximize();
     mainWindow.show();
   });
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+function createTray() {
+  const icon = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="8" fill="#d97757"/><text x="16" y="23" text-anchor="middle" font-size="21" fill="#28150f">✦</text></svg>'
+  );
+  tray = new Tray(nativeImage.createFromDataURL(icon));
+  tray.setToolTip('Claude Switcher');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Open Claude Switcher', click: () => { mainWindow.show(); mainWindow.focus(); } },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
+  ]));
+  tray.on('double-click', () => { mainWindow.show(); mainWindow.focus(); });
 }
 
 function getAccountView(account) {
@@ -270,11 +292,19 @@ app.whenReady().then(async () => {
   }
   registerIpc();
   createWindow();
+  createTray();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform === 'darwin' && !isQuitting) return;
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
+  resetTimers.forEach((timer) => clearTimeout(timer));
+  resetTimers.clear();
+  if (tray) tray.destroy();
 });
