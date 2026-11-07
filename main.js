@@ -22,6 +22,10 @@ async function loadAccounts() {
   try {
     accounts = JSON.parse(await fs.readFile(configPath, 'utf8'));
     if (!Array.isArray(accounts)) accounts = [];
+    accounts = accounts.map((account) => ({
+      ...account,
+      reminderEnabled: account.reminderEnabled !== false
+    }));
   } catch (error) {
     if (error.code !== 'ENOENT') console.error('Unable to load accounts:', error);
     accounts = [];
@@ -41,7 +45,7 @@ function scheduleResetNotification(account, usage) {
   if (existingTimer) clearTimeout(existingTimer);
   resetTimers.delete(account.id);
 
-  if (!usage.limited || !Number.isFinite(usage.resetAt) || usage.resetAt <= Date.now() || !Notification.isSupported()) {
+  if (account.reminderEnabled === false || !usage.limited || !Number.isFinite(usage.resetAt) || usage.resetAt <= Date.now() || !Notification.isSupported()) {
     return;
   }
 
@@ -195,6 +199,13 @@ function registerIpc() {
         return { messages, tokens, resetText, resetAt: Number.isFinite(resetAt) ? resetAt : null, limited };
       })()`, true);
         accountUsage.set(account.id, usage);
+        account.lastUsage = {
+          limited: usage.limited,
+          resetAt: usage.resetAt,
+          resetText: usage.resetText,
+          checkedAt: Date.now()
+        };
+        await saveAccounts();
         scheduleResetNotification(account, usage);
         results.push({ id: account.id, ...usage });
       } catch (error) {
@@ -263,6 +274,9 @@ function registerIpc() {
       view.webContents.destroy();
       accountViews.delete(account.id);
     }
+    const timer = resetTimers.get(account.id);
+    if (timer) clearTimeout(timer);
+    resetTimers.delete(account.id);
     if (activeViewId === account.id) activeViewId = undefined;
     await saveAccounts();
     await session.fromPartition(account.partition).clearStorageData();
@@ -289,6 +303,7 @@ app.whenReady().then(async () => {
   await loadAccounts();
   for (const account of accounts) {
     session.fromPartition(account.partition).setUserAgent(CHROME_USER_AGENT);
+    if (account.lastUsage) scheduleResetNotification(account, account.lastUsage);
   }
   registerIpc();
   createWindow();
