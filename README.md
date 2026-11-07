@@ -82,6 +82,17 @@ node --check renderer.js
 - More detailed session diagnostics
 - Automated end-to-end coverage for account switching
 
+## Build installers
+
+```bash
+npm run dist:win
+npm run dist:mac
+npm run dist:linux
+```
+
+Tagging a commit with a version such as `v1.1.0` triggers the GitHub Actions
+release workflow and builds platform-specific artifacts.
+
 ## License
 
 No license has been selected yet. Until a license is added, all rights are

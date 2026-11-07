@@ -1,0 +1,32 @@
+name: Build release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  package:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            command: npm run dist:win
+          - os: macos-latest
+            command: npm run dist:mac
+          - os: ubuntu-latest
+            command: npm run dist:linux
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: ${{ matrix.command }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
