@@ -12,6 +12,7 @@ session, so switching accounts does not require signing in again.
 - Local token-usage estimates and limit indicators
 - Desktop notification when a detected Claude usage limit is restored
 - Optional system-tray background mode and launch-at-startup support
+- Low-memory background mode unloads Claude web content while the app is hidden
 - Automatic usage refresh, account health indicators, and keyboard shortcuts
 - Privacy-safe settings export/import without cookies or login sessions
 - GitHub release checks from inside the app

@@ -15,6 +15,7 @@ const accountViews = new Map();
 let activeViewId;
 const accountUsage = new Map();
 const resetTimers = new Map();
+let activeViewBounds;
 let tray;
 let isQuitting = false;
 
@@ -95,10 +96,30 @@ function createWindow() {
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault();
+      detachActiveView();
       mainWindow.hide();
     }
   });
   mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('show', attachActiveView);
+}
+
+function detachActiveView() {
+  if (!mainWindow || !activeViewId) return;
+  const view = accountViews.get(activeViewId);
+  if (!view) return;
+  mainWindow.removeBrowserView(view);
+  view.webContents.destroy();
+  accountViews.delete(activeViewId);
+}
+
+function attachActiveView() {
+  if (!mainWindow || !activeViewId) return;
+  const account = accounts.find((item) => item.id === activeViewId);
+  if (!account) return;
+  const view = getAccountView(account);
+  mainWindow.addBrowserView(view);
+  if (activeViewBounds) view.setBounds(activeViewBounds);
 }
 
 function createTray() {
@@ -123,7 +144,8 @@ function getAccountView(account) {
         session: session.fromPartition(account.partition),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true
+        sandbox: true,
+        backgroundThrottling: true
       }
     });
     view.webContents.setUserAgent(CHROME_USER_AGENT);
@@ -135,7 +157,6 @@ function getAccountView(account) {
 
 function registerIpc() {
   ipcMain.handle('accounts:list', () => {
-    accounts.forEach((account) => getAccountView(account));
     return accounts;
   });
 
@@ -145,7 +166,11 @@ function registerIpc() {
     const view = getAccountView(account);
     if (activeViewId && activeViewId !== id) {
       const previous = accountViews.get(activeViewId);
-      if (previous) mainWindow.removeBrowserView(previous);
+      if (previous) {
+        mainWindow.removeBrowserView(previous);
+        previous.webContents.destroy();
+        accountViews.delete(activeViewId);
+      }
     }
     mainWindow.addBrowserView(view);
     activeViewId = id;
@@ -169,6 +194,7 @@ function registerIpc() {
       width: Math.max(1, Math.round(bounds.width)),
       height: Math.max(1, Math.round(bounds.height))
     };
+    activeViewBounds = safeBounds;
     view.setBounds(safeBounds);
     return true;
   });
