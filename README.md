@@ -1,0 +1,63 @@
+# Claude Switcher
+
+Claude Switcher is an Electron desktop workspace for keeping multiple Claude.ai
+accounts isolated on one device. Each account uses its own persistent browser
+session, so switching accounts does not require signing in again.
+
+## Features
+
+- Separate persistent Claude.ai sessions per account
+- Fast account switching from a desktop sidebar
+- Account rename, session clearing, and removal controls
+- Local token-usage estimates and limit indicators
+- Recent Claude chat and project history
+- Open the active Claude session in the system browser
+- Content Security Policy, context isolation, and disabled renderer Node.js access
+
+## Requirements
+
+- Windows, macOS, or Linux
+- Node.js 18 or newer
+- An internet connection for Claude.ai
+
+## Run locally
+
+```bash
+npm install
+npm start
+```
+
+Add an account from the sidebar and complete the Claude.ai sign-in flow in
+that account's isolated session.
+
+## Privacy
+
+Claude Switcher does not send account names, session data, or usage estimates
+to a project server. Account configuration is stored by Electron in the local
+application data directory, while Claude.ai cookies remain in each account's
+isolated persistent browser partition.
+
+The repository contains no credentials, access tokens, or personal account
+data. Do not commit exported cookies, screenshots containing private
+information, or local application-data files.
+
+## Development
+
+The application has three runtime layers:
+
+- `main.js` manages windows, isolated sessions, persistence, and IPC handlers.
+- `preload.js` exposes the narrow renderer bridge.
+- `renderer.js` and `styles.css` provide the account workspace UI.
+
+Before opening a pull request, run:
+
+```bash
+node --check main.js
+node --check preload.js
+node --check renderer.js
+```
+
+## License
+
+No license has been selected yet. Until a license is added, all rights are
+reserved by the copyright holder.
