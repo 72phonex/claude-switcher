@@ -14,7 +14,13 @@ function renderAccounts() {
     item.className = `account-item${account.id === state.activeId ? ' active' : ''}`;
     item.title = account.name;
     const usage = state.usage.get(account.id);
-    const status = usage?.limited ? 'Limit reached' : 'Ready to use';
+    const statusLabels = {
+      limited: 'Limit reached',
+      'signed-out': 'Sign in required',
+      'network-error': 'Connection problem',
+      ready: 'Ready to use'
+    };
+    const status = statusLabels[usage?.status] || 'Checking session...';
     const usageLine = usage ? `Usage: ~${usage.tokens.toLocaleString()} tokens` : 'Usage: measuring...';
     item.innerHTML = `<button class="account-select"><span class="avatar">${initials(account.name)}</span><span class="account-copy"><span class="account-name"></span><span class="account-status"></span><span class="account-usage"></span></span><span class="limit-dot${usage?.limited ? ' limited' : ''}"></span></button><button class="account-menu" title="Rename or manage account" aria-label="Rename or manage account">⚙</button>`;
     item.querySelector('.account-name').textContent = account.name;

@@ -43,6 +43,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .account-copy { min-width: 0; flex: 1; }
 .account-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .account-status { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+.account-item:has(.limit-dot.limited) .account-status { color: #e29a50; }
 .account-usage { display: block; margin-top: 2px; color: #8fc79b; font-size: 10px; }
 .limit-dot { width: 7px; height: 7px; border-radius: 50%; background: #66a77c; flex: 0 0 auto; }
 .limit-dot.limited { background: #e29a50; box-shadow: 0 0 0 3px #e29a5024; }

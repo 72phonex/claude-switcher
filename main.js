@@ -196,13 +196,17 @@ function registerIpc() {
         const resetText = reset ? reset[1].trim() : '';
         let resetAt = resetText ? Date.parse(resetText) : NaN;
         if (Number.isFinite(resetAt) && resetAt <= Date.now()) resetAt += 24 * 60 * 60 * 1000;
-        return { messages, tokens, resetText, resetAt: Number.isFinite(resetAt) ? resetAt : null, limited };
+        const signedOut = /sign in|log in|create an account/i.test(body) && messages === 0;
+        const networkError = /unable to connect|network error|offline|this site can.t be reached/i.test(body);
+        const status = networkError ? 'network-error' : signedOut ? 'signed-out' : limited ? 'limited' : 'ready';
+        return { messages, tokens, resetText, resetAt: Number.isFinite(resetAt) ? resetAt : null, limited, status };
       })()`, true);
         accountUsage.set(account.id, usage);
         account.lastUsage = {
           limited: usage.limited,
           resetAt: usage.resetAt,
           resetText: usage.resetText,
+          status: usage.status,
           checkedAt: Date.now()
         };
         await saveAccounts();
