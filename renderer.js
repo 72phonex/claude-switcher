@@ -237,5 +237,18 @@ $('remove-account').addEventListener('click', removeManagedAccount);
 $('account-dialog').addEventListener('close', restoreActiveView);
 window.addEventListener('resize', resizeWebviews);
 new ResizeObserver(resizeWebviews).observe($('webview-stage'));
+document.addEventListener('keydown', (event) => {
+  if (!event.ctrlKey || event.target.matches('input, textarea, [contenteditable="true"]')) return;
+  if (event.key.toLowerCase() === 'r') {
+    event.preventDefault();
+    window.claudeSwitcher.accounts.reloadView();
+    return;
+  }
+  const accountIndex = Number(event.key) - 1;
+  if (accountIndex >= 0 && accountIndex < state.accounts.length) {
+    event.preventDefault();
+    switchAccount(state.accounts[accountIndex].id);
+  }
+});
 init().catch((error) => window.alert(`Could not start Claude Switcher: ${error.message}`));
 setInterval(refreshUsage, 10000);
