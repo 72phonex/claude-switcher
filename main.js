@@ -268,6 +268,21 @@ function registerIpc() {
     return account;
   });
 
+  ipcMain.handle('accounts:set-reminder', async (_event, { id, enabled }) => {
+    const account = accounts.find((item) => item.id === id);
+    if (!account || typeof enabled !== 'boolean') throw new Error('Invalid reminder setting');
+    account.reminderEnabled = enabled;
+    if (!enabled) {
+      const timer = resetTimers.get(id);
+      if (timer) clearTimeout(timer);
+      resetTimers.delete(id);
+    } else if (account.lastUsage) {
+      scheduleResetNotification(account, account.lastUsage);
+    }
+    await saveAccounts();
+    return account;
+  });
+
   ipcMain.handle('accounts:delete', async (_event, id) => {
     const index = accounts.findIndex((item) => item.id === id);
     if (index === -1) throw new Error('Account not found');

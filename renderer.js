@@ -40,6 +40,9 @@ async function openAccountSettings(account) {
   managedAccount = account;
   $('account-dialog-title').textContent = account.name;
   $('account-dialog-subtitle').textContent = account.id === state.activeId ? 'Active Claude session' : 'Manage this Claude session';
+  $('toggle-reminders').textContent = account.reminderEnabled === false
+    ? 'Enable reset notifications'
+    : 'Disable reset notifications';
   await window.claudeSwitcher.accounts.hideView();
   $('account-dialog').showModal();
 }
@@ -194,6 +197,21 @@ async function init() {
 
 $('add-account').addEventListener('click', addAccount);
 $('empty-add').addEventListener('click', addAccount);
+$('toggle-reminders').addEventListener('click', async () => {
+  if (!managedAccount) return;
+  try {
+    const updated = await window.claudeSwitcher.accounts.setReminderEnabled(
+      managedAccount.id,
+      managedAccount.reminderEnabled === false
+    );
+    Object.assign(managedAccount, updated);
+    $('toggle-reminders').textContent = managedAccount.reminderEnabled === false
+      ? 'Enable reset notifications'
+      : 'Disable reset notifications';
+  } catch (error) {
+    window.alert(`Could not update notifications: ${error.message}`);
+  }
+});
 $('reload-page').addEventListener('click', () => window.claudeSwitcher.accounts.reloadView());
 $('error-reload').addEventListener('click', () => window.claudeSwitcher.accounts.reloadView());
 $('open-external').addEventListener('click', () => window.claudeSwitcher.openExternal('https://claude.ai/'));

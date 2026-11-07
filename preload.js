@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('claudeSwitcher', {
     list: () => ipcRenderer.invoke('accounts:list'),
     add: (name) => ipcRenderer.invoke('accounts:add', name),
     rename: (id, name) => ipcRenderer.invoke('accounts:rename', { id, name }),
+    setReminderEnabled: (id, enabled) => ipcRenderer.invoke('accounts:set-reminder', { id, enabled }),
     remove: (id) => ipcRenderer.invoke('accounts:delete', id),
     clearSession: (id) => ipcRenderer.invoke('accounts:clear-session', id),
     showView: (id) => ipcRenderer.invoke('account-view:show', id),
