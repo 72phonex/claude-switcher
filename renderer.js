@@ -1,4 +1,4 @@
-const state = { accounts: [], activeId: null, views: new Map(), limited: new Set(), usage: new Map(), messageCounts: new Map() };
+const state = { accounts: [], activeId: null, views: new Map(), limited: new Set(), usage: new Map(), history: [] };
 let managedAccount;
 const $ = (id) => document.getElementById(id);
 const list = $('account-list');
@@ -13,10 +13,13 @@ function renderAccounts() {
     const item = document.createElement('div');
     item.className = `account-item${account.id === state.activeId ? ' active' : ''}`;
     item.title = account.name;
-    const status = state.limited.has(account.id) ? 'Limit reached' : 'Ready to use';
-    item.innerHTML = `<button class="account-select"><span class="avatar">${initials(account.name)}</span><span class="account-copy"><span class="account-name"></span><span class="account-status"></span></span><span class="limit-dot${state.limited.has(account.id) ? ' limited' : ''}"></span></button><button class="account-menu" title="Account settings" aria-label="Account settings">•••</button>`;
+    const usage = state.usage.get(account.id);
+    const status = usage?.limited ? 'Limit reached' : 'Ready to use';
+    const usageLine = usage ? `Usage: ~${usage.tokens.toLocaleString()} tokens` : 'Usage: measuring...';
+    item.innerHTML = `<button class="account-select"><span class="avatar">${initials(account.name)}</span><span class="account-copy"><span class="account-name"></span><span class="account-status"></span><span class="account-usage"></span></span><span class="limit-dot${usage?.limited ? ' limited' : ''}"></span></button><button class="account-menu" title="Rename or manage account" aria-label="Rename or manage account">⚙</button>`;
     item.querySelector('.account-name').textContent = account.name;
     item.querySelector('.account-status').textContent = status;
+    item.querySelector('.account-usage').textContent = usageLine;
     item.querySelector('.account-select').addEventListener('click', () => switchAccount(account.id));
     item.querySelector('.account-menu').addEventListener('click', () => openAccountSettings(account));
     list.append(item);
@@ -27,10 +30,11 @@ function renderAccounts() {
   renderUsage();
 }
 
-function openAccountSettings(account) {
+async function openAccountSettings(account) {
   managedAccount = account;
   $('account-dialog-title').textContent = account.name;
   $('account-dialog-subtitle').textContent = account.id === state.activeId ? 'Active Claude session' : 'Manage this Claude session';
+  await window.claudeSwitcher.accounts.hideView();
   $('account-dialog').showModal();
 }
 
@@ -51,6 +55,12 @@ async function removeManagedAccount() {
     renderAccounts();
   } catch (error) {
     window.alert(`Could not remove account: ${error.message}`);
+  }
+}
+
+function restoreActiveView() {
+  if (state.activeId) {
+    window.claudeSwitcher.accounts.showView(state.activeId).then(resizeWebviews);
   }
 }
 
@@ -81,14 +91,48 @@ function resizeWebviews() {
 }
 
 function renderUsage() {
-  const count = state.messageCounts.get(state.activeId) || 0;
-  const fill = Math.min(count * 5, 100);
-  $('usage-meter-fill').style.width = `${fill}%`;
   const usage = state.usage.get(state.activeId);
+  const count = usage?.tokens || 0;
+  const fill = Math.min((count / 20000) * 100, 100);
+  $('usage-meter-fill').style.width = `${fill}%`;
   $('usage-summary').textContent = usage?.resetText || (state.activeId ? 'No limit notice detected' : 'Select an account to see usage');
   $('usage-detail').textContent = state.activeId
-    ? `Local estimate: ${count} message${count === 1 ? '' : 's'} visible`
+    ? `Local estimate: ~${count.toLocaleString()} tokens`
     : 'Usage appears here when Claude exposes it';
+}
+
+async function refreshUsage() {
+  const usageResults = await window.claudeSwitcher.accounts.usage();
+  usageResults.forEach((usage) => {
+    state.usage.set(usage.id, usage);
+    if (usage.limited) state.limited.add(usage.id); else state.limited.delete(usage.id);
+  });
+  renderAccounts();
+}
+
+async function refreshHistory() {
+  const panel = $('history-panel');
+  const listElement = $('history-list');
+  listElement.replaceChildren();
+  $('history-account').textContent = state.activeId
+    ? `Recent chats and projects for ${state.accounts.find((account) => account.id === state.activeId)?.name || 'this account'}`
+    : 'Select an account to view its recent Claude activity.';
+  const entries = await window.claudeSwitcher.accounts.history();
+  if (!entries.length) {
+    listElement.innerHTML = '<div class="history-empty">No project or chat links were found in this account session. Open Claude and refresh.</div>';
+    return;
+  }
+  entries.forEach((entry) => {
+    const link = document.createElement('button');
+    link.className = 'history-entry';
+    link.textContent = entry.title;
+    link.addEventListener('click', async () => {
+      await window.claudeSwitcher.accounts.openHistory(entry.href);
+      $('history-panel').classList.add('hidden');
+      $('webview-stage').classList.remove('hidden');
+    });
+    listElement.append(link);
+  });
 }
 
 function switchAccount(id) {
@@ -98,12 +142,19 @@ function switchAccount(id) {
   renderAccounts();
   window.claudeSwitcher.accounts.showView(id)
     .then(resizeWebviews)
+    .then(refreshUsage)
     .catch((error) => window.alert(`Could not open Claude: ${error.message}`));
 }
 
 async function addAccount() {
+  const name = window.prompt('Name this Claude account:', `Account ${state.accounts.length + 1}`);
+  if (name === null) return;
+  if (!name.trim()) {
+    window.alert('Please enter an account name.');
+    return;
+  }
   try {
-    const account = await window.claudeSwitcher.accounts.add('');
+    const account = await window.claudeSwitcher.accounts.add(name);
     state.accounts.push(account);
     createView(account);
     switchAccount(account.id);
@@ -136,12 +187,26 @@ $('reload-page').addEventListener('click', () => window.claudeSwitcher.accounts.
 $('error-reload').addEventListener('click', () => window.claudeSwitcher.accounts.reloadView());
 $('open-external').addEventListener('click', () => window.claudeSwitcher.openExternal('https://claude.ai/'));
 $('sidebar-toggle').addEventListener('click', () => $('sidebar').classList.toggle('collapsed'));
+$('project-history-button').addEventListener('click', async () => {
+  await window.claudeSwitcher.accounts.hideView();
+  $('webview-stage').classList.add('hidden');
+  $('history-panel').classList.remove('hidden');
+  await refreshHistory();
+});
+$('refresh-history').addEventListener('click', refreshHistory);
+$('close-history').addEventListener('click', () => {
+  $('history-panel').classList.add('hidden');
+  $('webview-stage').classList.remove('hidden');
+  restoreActiveView();
+});
 $('rename-account').addEventListener('click', async () => {
   if (managedAccount) await renameAccount(managedAccount);
   $('account-dialog').close();
 });
 $('clear-account-session').addEventListener('click', clearManagedSession);
 $('remove-account').addEventListener('click', removeManagedAccount);
+$('account-dialog').addEventListener('close', restoreActiveView);
 window.addEventListener('resize', resizeWebviews);
 new ResizeObserver(resizeWebviews).observe($('webview-stage'));
 init().catch((error) => window.alert(`Could not start Claude Switcher: ${error.message}`));
+setInterval(refreshUsage, 10000);

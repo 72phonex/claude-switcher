@@ -18,10 +18,7 @@
       <button class="icon-button sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar">‹</button>
     </div>
     <div class="claude-nav">
-      <button class="nav-item active"><span>＋</span> New chat</button>
-      <button class="nav-item"><span>⌕</span> Search</button>
-      <button class="nav-item"><span>▣</span> Projects</button>
-      <button class="nav-item"><span>◇</span> Artifacts</button>
+      <button class="nav-item active" id="project-history-button"><span>▤</span> Project history</button>
     </div>
     <div class="accounts-heading">
       <span>Switch account</span>
@@ -62,6 +59,13 @@
         <p id="error-message">Check your internet connection and try again.</p>
         <button class="secondary-button" id="error-reload">Try again</button>
       </div>
+    </section>
+    <section class="history-panel hidden" id="history-panel" aria-live="polite">
+      <div class="history-header">
+        <div><h1>Project history</h1><p id="history-account">Select an account to view its recent Claude activity.</p></div>
+        <div class="history-actions"><button class="toolbar-button" id="close-history">← Claude</button><button class="toolbar-button" id="refresh-history">↻ Refresh</button></div>
+      </div>
+      <div class="history-list" id="history-list"></div>
     </section>
   </main>
   <dialog class="account-dialog" id="account-dialog">
