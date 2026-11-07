@@ -1,0 +1,16 @@
+{
+  "name": "claude-switcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A desktop account switcher for multiple isolated Claude.ai sessions.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^36.0.0"
+  },
+  "allowScripts": {
+    "electron@36.9.5": true
+  }
+}

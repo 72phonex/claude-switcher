@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';">
+  <title>Claude Switcher</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">✦</div>
+      <div>
+        <strong>Claude</strong>
+        <span>Account workspace</span>
+      </div>
+      <button class="icon-button sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar">‹</button>
+    </div>
+    <div class="claude-nav">
+      <button class="nav-item active"><span>＋</span> New chat</button>
+      <button class="nav-item"><span>⌕</span> Search</button>
+      <button class="nav-item"><span>▣</span> Projects</button>
+      <button class="nav-item"><span>◇</span> Artifacts</button>
+    </div>
+    <div class="accounts-heading">
+      <span>Switch account</span>
+      <button class="add-button" id="add-account" title="Add Claude account">+</button>
+    </div>
+    <nav class="account-list" id="account-list" aria-label="Claude accounts"></nav>
+    <section class="usage-card" id="usage-card" aria-live="polite">
+      <div class="usage-card-heading"><span>Token usage</span><span class="usage-icon">◒</span></div>
+      <div class="usage-meter"><span id="usage-meter-fill"></span></div>
+      <div class="usage-summary" id="usage-summary">Select an account to see usage</div>
+      <div class="usage-detail" id="usage-detail">Local estimate: no messages yet</div>
+    </section>
+    <div class="sidebar-footer">
+      <div class="privacy-note"><span class="lock">♢</span><span>Sessions are kept separate<br>on this device.</span></div>
+      <span class="version">v1.0.0</span>
+    </div>
+  </aside>
+
+  <main class="content">
+    <header class="toolbar">
+      <div class="breadcrumb"><strong id="active-name">No account</strong><span class="chevron">⌄</span></div>
+      <div class="toolbar-actions">
+          <button class="toolbar-button" id="reload-page" title="Reload Claude">↻ <span>Reload</span></button>
+          <button class="toolbar-button" id="open-external" title="Open Claude in browser">↗ <span>Open browser</span></button>
+      </div>
+    </header>
+    <section class="webview-stage" id="webview-stage">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-mark">✦</div>
+        <h1>Your Claude workspace</h1>
+        <p>Claude.ai runs inside this app. Add an account to sign in, then switch accounts from the sidebar without signing in again.</p>
+        <p class="notice">Each account has a separate persistent browser session.</p>
+        <button class="primary-button" id="empty-add">Add your first account</button>
+      </div>
+      <div class="error-state hidden" id="error-state">
+        <div class="error-icon">!</div>
+        <h2>Claude could not be loaded</h2>
+        <p id="error-message">Check your internet connection and try again.</p>
+        <button class="secondary-button" id="error-reload">Try again</button>
+      </div>
+    </section>
+  </main>
+  <dialog class="account-dialog" id="account-dialog">
+    <form method="dialog" class="account-dialog-panel">
+      <div class="dialog-header">
+        <div><strong id="account-dialog-title">Account settings</strong><span id="account-dialog-subtitle">Manage this Claude session</span></div>
+        <button class="icon-button" value="cancel" aria-label="Close">×</button>
+      </div>
+      <div class="account-dialog-actions">
+        <button type="button" class="dialog-action" id="rename-account">Rename account</button>
+        <button type="button" class="dialog-action" id="clear-account-session">Clear saved session</button>
+        <button type="button" class="dialog-action danger" id="remove-account">Remove account</button>
+      </div>
+      <p class="dialog-hint">Removing an account permanently deletes its saved login session from this device.</p>
+    </form>
+  </dialog>
+  <script src="renderer.js"></script>
+</body>
+</html>
