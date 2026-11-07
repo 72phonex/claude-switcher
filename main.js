@@ -1,4 +1,4 @@
-const { app, BrowserWindow, BrowserView, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, BrowserView, Notification, ipcMain, session, shell } = require('electron');
 const crypto = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs/promises');
@@ -14,6 +14,7 @@ let configPath;
 const accountViews = new Map();
 let activeViewId;
 const accountUsage = new Map();
+const resetTimers = new Map();
 
 async function loadAccounts() {
   try {
@@ -31,6 +32,26 @@ async function saveAccounts() {
 
 function accountPartition(id) {
   return `persist:account_${id}`;
+}
+
+function scheduleResetNotification(account, usage) {
+  const existingTimer = resetTimers.get(account.id);
+  if (existingTimer) clearTimeout(existingTimer);
+  resetTimers.delete(account.id);
+
+  if (!usage.limited || !Number.isFinite(usage.resetAt) || usage.resetAt <= Date.now() || !Notification.isSupported()) {
+    return;
+  }
+
+  const delay = usage.resetAt - Date.now();
+  const timer = setTimeout(() => {
+    resetTimers.delete(account.id);
+    new Notification({
+      title: `${account.name} is ready again`,
+      body: 'Claude token usage should be restored. Open Claude to continue.'
+    }).show();
+  }, delay);
+  resetTimers.set(account.id, timer);
 }
 
 function makeAccount(name) {
@@ -146,9 +167,13 @@ function registerIpc() {
         const tokens = Math.max(0, Math.round(nodes.reduce((total, node) => total + (node.innerText || '').length, 0) / 4));
         const reset = body.match(/(?:until|resets? at|available again)\\s+([^\\.\\n]{3,80})/i);
         const limited = /reached (?:your )?limit|usage limit|try again later/i.test(body);
-        return { messages, tokens, resetText: reset ? reset[1].trim() : '', limited };
+        const resetText = reset ? reset[1].trim() : '';
+        let resetAt = resetText ? Date.parse(resetText) : NaN;
+        if (Number.isFinite(resetAt) && resetAt <= Date.now()) resetAt += 24 * 60 * 60 * 1000;
+        return { messages, tokens, resetText, resetAt: Number.isFinite(resetAt) ? resetAt : null, limited };
       })()`, true);
         accountUsage.set(account.id, usage);
+        scheduleResetNotification(account, usage);
         results.push({ id: account.id, ...usage });
       } catch (error) {
         console.warn(`Could not inspect usage for ${account.name}:`, error.message);

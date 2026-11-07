@@ -10,6 +10,7 @@ session, so switching accounts does not require signing in again.
 - Fast account switching from a desktop sidebar
 - Account rename, session clearing, and removal controls
 - Local token-usage estimates and limit indicators
+- Desktop notification when a detected Claude usage limit is restored
 - Recent Claude chat and project history
 - Open the active Claude session in the system browser
 - Content Security Policy, context isolation, and disabled renderer Node.js access
@@ -29,6 +30,11 @@ npm start
 
 Add an account from the sidebar and complete the Claude.ai sign-in flow in
 that account's isolated session.
+
+When Claude exposes a future reset time while an account is limited, the app
+schedules a local desktop notification for that account. The reminder depends
+on Claude showing a parseable reset time; it does not contact a separate
+notification service.
 
 ## Privacy
 

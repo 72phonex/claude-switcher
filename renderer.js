@@ -97,7 +97,9 @@ function renderUsage() {
   $('usage-meter-fill').style.width = `${fill}%`;
   $('usage-summary').textContent = usage?.resetText || (state.activeId ? 'No limit notice detected' : 'Select an account to see usage');
   $('usage-detail').textContent = state.activeId
-    ? `Local estimate: ~${count.toLocaleString()} tokens`
+    ? usage?.resetAt
+      ? `Reminder scheduled for ${new Date(usage.resetAt).toLocaleString()}`
+      : `Local estimate: ~${count.toLocaleString()} tokens`
     : 'Usage appears here when Claude exposes it';
 }
 
