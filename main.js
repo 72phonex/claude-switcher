@@ -13,6 +13,7 @@ let accounts = [];
 let configPath;
 const accountViews = new Map();
 let activeViewId;
+const accountUsage = new Map();
 
 async function loadAccounts() {
   try {
@@ -86,7 +87,10 @@ function getAccountView(account) {
 }
 
 function registerIpc() {
-  ipcMain.handle('accounts:list', () => accounts);
+  ipcMain.handle('accounts:list', () => {
+    accounts.forEach((account) => getAccountView(account));
+    return accounts;
+  });
 
   ipcMain.handle('account-view:show', (_event, id) => {
     const account = accounts.find((item) => item.id === id);
@@ -99,6 +103,13 @@ function registerIpc() {
     mainWindow.addBrowserView(view);
     activeViewId = id;
     return true;
+  });
+
+  ipcMain.handle('account-view:hide', () => {
+    if (!mainWindow || !activeViewId) return false;
+    const view = accountViews.get(activeViewId);
+    if (view) mainWindow.removeBrowserView(view);
+    return Boolean(view);
   });
 
   ipcMain.handle('account-view:bounds', (_event, bounds) => {
@@ -119,6 +130,57 @@ function registerIpc() {
     const view = activeViewId && accountViews.get(activeViewId);
     if (view) view.webContents.reload();
     return Boolean(view);
+  });
+
+  ipcMain.handle('account-view:usage', async () => {
+    const results = [];
+    for (const account of accounts) {
+      const view = accountViews.get(account.id);
+      if (!view || view.webContents.isLoading()) continue;
+      try {
+      const usage = await view.webContents.executeJavaScript(`(() => {
+        const body = document.body ? document.body.innerText : '';
+        const selectors = ['[data-testid*="user-message"]', '[data-is-user="true"]', '[class*="user-message"]'];
+        const nodes = [...new Set(selectors.flatMap((selector) => [...document.querySelectorAll(selector)]))];
+        const messages = nodes.length;
+        const tokens = Math.max(0, Math.round(nodes.reduce((total, node) => total + (node.innerText || '').length, 0) / 4));
+        const reset = body.match(/(?:until|resets? at|available again)\\s+([^\\.\\n]{3,80})/i);
+        const limited = /reached (?:your )?limit|usage limit|try again later/i.test(body);
+        return { messages, tokens, resetText: reset ? reset[1].trim() : '', limited };
+      })()`, true);
+        accountUsage.set(account.id, usage);
+        results.push({ id: account.id, ...usage });
+      } catch (error) {
+        console.warn(`Could not inspect usage for ${account.name}:`, error.message);
+      }
+    }
+    return results;
+  });
+
+  ipcMain.handle('account-view:history', async () => {
+    const view = activeViewId && accountViews.get(activeViewId);
+    if (!view) return [];
+    try {
+      return await view.webContents.executeJavaScript(`(() => {
+        const links = [...document.querySelectorAll('a[href*="/chat/"], a[href*="/project/"]')];
+        return [...new Map(links.map((link) => [link.href, {
+          title: (link.innerText || link.textContent || '').trim(),
+          href: link.href
+        }]).filter(([, item]) => item.title)).values()].slice(0, 100);
+      })()`, true);
+    } catch (error) {
+      console.warn('Could not read project history:', error.message);
+      return [];
+    }
+  });
+
+  ipcMain.handle('account-view:open-history', (_event, url) => {
+    const view = activeViewId && accountViews.get(activeViewId);
+    if (!view || typeof url !== 'string' || !/^https:\/\/claude\.ai\/(chat|project)\//.test(url)) {
+      throw new Error('Invalid Claude history link');
+    }
+    view.webContents.loadURL(url);
+    return true;
   });
 
   ipcMain.handle('account-view:open-external', () => {
