@@ -181,6 +181,9 @@ async function init() {
   state.accounts = await window.claudeSwitcher.accounts.list();
   state.accounts.forEach(createView);
   if (state.accounts[0]) switchAccount(state.accounts[0].id); else renderAccounts();
+  window.setInterval(() => {
+    refreshUsage().catch((error) => console.warn(`Automatic usage refresh failed: ${error.message}`));
+  }, 5 * 60 * 1000);
 }
 
 $('add-account').addEventListener('click', addAccount);
