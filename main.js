@@ -310,7 +310,7 @@ function registerIpc() {
   });
 
   ipcMain.handle('app:open-external', (_event, url) => {
-    if (typeof url === 'string' && /^https:\/\/(www\.)?claude\.ai(\/|$)/.test(url)) {
+    if (typeof url === 'string' && /^https:\/\/(www\.)?(claude\.ai|github\.com\/72phonex\/claude-switcher)(\/|$)/.test(url)) {
       return shell.openExternal(url);
     }
     return false;
@@ -363,6 +363,20 @@ function registerIpc() {
     if (typeof enabled !== 'boolean') throw new Error('Invalid startup setting');
     app.setLoginItemSettings({ openAtLogin: enabled });
     return app.getLoginItemSettings().openAtLogin;
+  });
+
+  ipcMain.handle('app:check-updates', async () => {
+    const response = await fetch('https://api.github.com/repos/72phonex/claude-switcher/releases/latest', {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Claude-Switcher' }
+    });
+    if (response.status === 404) return { available: false, releaseUrl: 'https://github.com/72phonex/claude-switcher/releases' };
+    if (!response.ok) throw new Error(`GitHub returned HTTP ${response.status}`);
+    const release = await response.json();
+    return {
+      available: Boolean(release.tag_name),
+      version: release.tag_name || null,
+      releaseUrl: release.html_url || 'https://github.com/72phonex/claude-switcher/releases'
+    };
   });
 }
 

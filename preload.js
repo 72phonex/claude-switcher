@@ -21,5 +21,6 @@ contextBridge.exposeInMainWorld('claudeSwitcher', {
   exportConfig: () => ipcRenderer.invoke('config:export'),
   importConfig: () => ipcRenderer.invoke('config:import'),
   startupStatus: () => ipcRenderer.invoke('app:startup-status'),
-  setStartup: (enabled) => ipcRenderer.invoke('app:set-startup', enabled)
+  setStartup: (enabled) => ipcRenderer.invoke('app:set-startup', enabled),
+  checkUpdates: () => ipcRenderer.invoke('app:check-updates')
 });

@@ -242,6 +242,20 @@ $('startup-toggle').addEventListener('click', async () => {
     window.alert(`Could not update startup setting: ${error.message}`);
   }
 });
+$('check-updates').addEventListener('click', async () => {
+  try {
+    const update = await window.claudeSwitcher.checkUpdates();
+    if (update.available) {
+      if (window.confirm(`Release ${update.version} is available. Open the release page?`)) {
+        window.claudeSwitcher.openExternal(update.releaseUrl);
+      }
+    } else {
+      window.alert('No published release is available yet.');
+    }
+  } catch (error) {
+    window.alert(`Could not check for updates: ${error.message}`);
+  }
+});
 $('sidebar-toggle').addEventListener('click', () => $('sidebar').classList.toggle('collapsed'));
 $('project-history-button').addEventListener('click', async () => {
   await window.claudeSwitcher.accounts.hideView();
