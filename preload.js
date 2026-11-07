@@ -8,9 +8,13 @@ contextBridge.exposeInMainWorld('claudeSwitcher', {
     remove: (id) => ipcRenderer.invoke('accounts:delete', id),
     clearSession: (id) => ipcRenderer.invoke('accounts:clear-session', id),
     showView: (id) => ipcRenderer.invoke('account-view:show', id),
+    hideView: () => ipcRenderer.invoke('account-view:hide'),
     setViewBounds: (bounds) => ipcRenderer.invoke('account-view:bounds', bounds),
     reloadView: () => ipcRenderer.invoke('account-view:reload'),
-    openExternal: () => ipcRenderer.invoke('account-view:open-external')
+    openExternal: () => ipcRenderer.invoke('account-view:open-external'),
+    usage: () => ipcRenderer.invoke('account-view:usage'),
+    history: () => ipcRenderer.invoke('account-view:history'),
+    openHistory: (url) => ipcRenderer.invoke('account-view:open-history', url)
   },
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url)
 });
