@@ -12,7 +12,7 @@ let mainWindow;
 let accounts = [];
 let configPath;
 let preferencesPath;
-let preferences = { memoryMode: 'balanced' };
+let preferences = { memoryMode: 'balanced', usageRefreshMinutes: 5 };
 const accountViews = new Map();
 let viewUseOrder = [];
 let activeViewId;
@@ -45,6 +45,9 @@ async function loadPreferences() {
     const saved = JSON.parse(await fs.readFile(preferencesPath, 'utf8'));
     if (['normal', 'balanced', 'ultra-low'].includes(saved.memoryMode)) {
       preferences.memoryMode = saved.memoryMode;
+    }
+    if ([1, 5, 15, 30].includes(saved.usageRefreshMinutes)) {
+      preferences.usageRefreshMinutes = saved.usageRefreshMinutes;
     }
   } catch (error) {
     if (error.code !== 'ENOENT') console.error('Unable to load preferences:', error);
@@ -206,6 +209,19 @@ function registerIpc() {
     }
     pruneInactiveViews();
     return preferences.memoryMode;
+  });
+  ipcMain.handle('app:usage-refresh-minutes', () => preferences.usageRefreshMinutes);
+  ipcMain.handle('app:set-usage-refresh-minutes', async (_event, minutes) => {
+    if (![1, 5, 15, 30].includes(minutes)) throw new Error('Invalid usage refresh interval');
+    const previousMinutes = preferences.usageRefreshMinutes;
+    preferences.usageRefreshMinutes = minutes;
+    try {
+      await savePreferences();
+    } catch (error) {
+      preferences.usageRefreshMinutes = previousMinutes;
+      throw error;
+    }
+    return preferences.usageRefreshMinutes;
   });
 
   ipcMain.handle('account-view:show', (_event, id) => {

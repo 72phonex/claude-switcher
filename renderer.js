@@ -1,5 +1,7 @@
 const state = { accounts: [], activeId: null, views: new Map(), limited: new Set(), usage: new Map(), history: [] };
 let managedAccount;
+let refreshTimer;
+let usageRefreshInProgress = false;
 const $ = (id) => document.getElementById(id);
 const list = $('account-list');
 
@@ -113,12 +115,25 @@ function renderUsage() {
 }
 
 async function refreshUsage() {
-  const usageResults = await window.claudeSwitcher.accounts.usage();
-  usageResults.forEach((usage) => {
-    state.usage.set(usage.id, usage);
-    if (usage.limited) state.limited.add(usage.id); else state.limited.delete(usage.id);
-  });
-  renderAccounts();
+  if (usageRefreshInProgress) return;
+  usageRefreshInProgress = true;
+  try {
+    const usageResults = await window.claudeSwitcher.accounts.usage();
+    usageResults.forEach((usage) => {
+      state.usage.set(usage.id, usage);
+      if (usage.limited) state.limited.add(usage.id); else state.limited.delete(usage.id);
+    });
+    renderAccounts();
+  } finally {
+    usageRefreshInProgress = false;
+  }
+}
+
+function scheduleUsageRefresh(minutes) {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = window.setInterval(() => {
+    refreshUsage().catch((error) => console.warn(`Automatic usage refresh failed: ${error.message}`));
+  }, minutes * 60 * 1000);
 }
 
 async function refreshHistory() {
@@ -188,12 +203,15 @@ async function renameAccount(account) {
 
 async function init() {
   state.accounts = await window.claudeSwitcher.accounts.list();
-  $('memory-mode').value = await window.claudeSwitcher.memoryMode();
+  const memoryMode = await window.claudeSwitcher.memoryMode();
+  $('memory-mode').value = memoryMode;
+  $('memory-mode').dataset.savedValue = memoryMode;
+  const refreshMinutes = String(await window.claudeSwitcher.usageRefreshMinutes());
+  $('usage-refresh').value = refreshMinutes;
+  $('usage-refresh').dataset.savedValue = refreshMinutes;
   state.accounts.forEach(createView);
   if (state.accounts[0]) switchAccount(state.accounts[0].id); else renderAccounts();
-  window.setInterval(() => {
-    refreshUsage().catch((error) => console.warn(`Automatic usage refresh failed: ${error.message}`));
-  }, 5 * 60 * 1000);
+  scheduleUsageRefresh(Number($('usage-refresh').value));
 }
 
 $('add-account').addEventListener('click', addAccount);
@@ -246,12 +264,26 @@ $('startup-toggle').addEventListener('click', async () => {
 $('preferences-button').addEventListener('click', () => $('preferences-dialog').showModal());
 $('memory-mode').addEventListener('change', async (event) => {
   const select = event.currentTarget;
-  const previousMode = await window.claudeSwitcher.memoryMode();
+  const previousMode = select.dataset.savedValue;
   try {
     select.value = await window.claudeSwitcher.setMemoryMode(select.value);
+    select.dataset.savedValue = select.value;
   } catch (error) {
     select.value = previousMode;
     window.alert(`Could not update memory mode: ${error.message}`);
+  }
+});
+$('usage-refresh').addEventListener('change', async (event) => {
+  const select = event.currentTarget;
+  const previousMinutes = select.dataset.savedValue;
+  try {
+    const minutes = await window.claudeSwitcher.setUsageRefreshMinutes(Number(select.value));
+    select.value = String(minutes);
+    select.dataset.savedValue = select.value;
+    scheduleUsageRefresh(minutes);
+  } catch (error) {
+    select.value = String(previousMinutes);
+    window.alert(`Could not update usage refresh interval: ${error.message}`);
   }
 });
 $('check-updates').addEventListener('click', async () => {
@@ -307,4 +339,3 @@ init().catch((error) => window.alert(`Could not start Claude Switcher: ${error.m
 window.claudeSwitcher.startupStatus()
   .then((enabled) => { $('startup-toggle').textContent = enabled ? 'Startup: on' : 'Startup: off'; })
   .catch((error) => console.warn(`Could not read startup setting: ${error.message}`));
-setInterval(refreshUsage, 10000);

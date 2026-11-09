@@ -24,5 +24,7 @@ contextBridge.exposeInMainWorld('claudeSwitcher', {
   setStartup: (enabled) => ipcRenderer.invoke('app:set-startup', enabled),
   memoryMode: () => ipcRenderer.invoke('app:memory-mode'),
   setMemoryMode: (mode) => ipcRenderer.invoke('app:set-memory-mode', mode),
+  usageRefreshMinutes: () => ipcRenderer.invoke('app:usage-refresh-minutes'),
+  setUsageRefreshMinutes: (minutes) => ipcRenderer.invoke('app:set-usage-refresh-minutes', minutes),
   checkUpdates: () => ipcRenderer.invoke('app:check-updates')
 });

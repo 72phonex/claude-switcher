@@ -13,7 +13,7 @@ session, so switching accounts does not require signing in again.
 - Desktop notification when a detected Claude usage limit is restored
 - Optional system-tray background mode and launch-at-startup support
 - Normal, Balanced, and Ultra-low memory modes control how many inactive account pages stay loaded
-- Automatic usage refresh, account health indicators, and keyboard shortcuts
+- Configurable automatic usage refresh, account health indicators, and keyboard shortcuts
 - Privacy-safe settings export/import without cookies or login sessions
 - GitHub release checks from inside the app
 - Recent Claude chat and project history
@@ -53,6 +53,9 @@ Choose a memory mode from the Memory button: Normal keeps all inactive account
 pages loaded, Balanced keeps the most recently used inactive page, and
 Ultra-low unloads inactive pages. Account login sessions remain isolated and
 persistent in every mode.
+
+Set automatic usage refresh to every 1, 5, 15, or 30 minutes from the same
+Memory settings dialog.
 
 ## Privacy
 
