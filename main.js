@@ -11,7 +11,10 @@ const CHROME_USER_AGENT =
 let mainWindow;
 let accounts = [];
 let configPath;
+let preferencesPath;
+let preferences = { memoryMode: 'balanced' };
 const accountViews = new Map();
+let viewUseOrder = [];
 let activeViewId;
 const accountUsage = new Map();
 const resetTimers = new Map();
@@ -35,6 +38,21 @@ async function loadAccounts() {
 
 async function saveAccounts() {
   await fs.writeFile(configPath, JSON.stringify(accounts, null, 2), 'utf8');
+}
+
+async function loadPreferences() {
+  try {
+    const saved = JSON.parse(await fs.readFile(preferencesPath, 'utf8'));
+    if (['normal', 'balanced', 'ultra-low'].includes(saved.memoryMode)) {
+      preferences.memoryMode = saved.memoryMode;
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') console.error('Unable to load preferences:', error);
+  }
+}
+
+async function savePreferences() {
+  await fs.writeFile(preferencesPath, JSON.stringify(preferences, null, 2), 'utf8');
 }
 
 function accountPartition(id) {
@@ -104,13 +122,25 @@ function createWindow() {
   mainWindow.on('show', attachActiveView);
 }
 
-function detachActiveView() {
-  if (!mainWindow || !activeViewId) return;
-  const view = accountViews.get(activeViewId);
+function destroyAccountView(id) {
+  const view = accountViews.get(id);
   if (!view) return;
-  mainWindow.removeBrowserView(view);
+  if (mainWindow) mainWindow.removeBrowserView(view);
   view.webContents.destroy();
-  accountViews.delete(activeViewId);
+  accountViews.delete(id);
+  viewUseOrder = viewUseOrder.filter((accountId) => accountId !== id);
+}
+
+function pruneInactiveViews() {
+  const retainedCount = preferences.memoryMode === 'normal'
+    ? Infinity
+    : preferences.memoryMode === 'balanced' ? 1 : 0;
+  const inactiveIds = viewUseOrder.filter((id) => id !== activeViewId);
+  inactiveIds.slice(0, Math.max(0, inactiveIds.length - retainedCount)).forEach(destroyAccountView);
+}
+
+function detachActiveView() {
+  if (activeViewId) destroyAccountView(activeViewId);
 }
 
 function attachActiveView() {
@@ -120,6 +150,9 @@ function attachActiveView() {
   const view = getAccountView(account);
   mainWindow.addBrowserView(view);
   if (activeViewBounds) view.setBounds(activeViewBounds);
+  viewUseOrder = viewUseOrder.filter((accountId) => accountId !== activeViewId);
+  viewUseOrder.push(activeViewId);
+  pruneInactiveViews();
 }
 
 function createTray() {
@@ -160,20 +193,34 @@ function registerIpc() {
     return accounts;
   });
 
+  ipcMain.handle('app:memory-mode', () => preferences.memoryMode);
+  ipcMain.handle('app:set-memory-mode', async (_event, mode) => {
+    if (!['normal', 'balanced', 'ultra-low'].includes(mode)) throw new Error('Invalid memory mode');
+    const previousMode = preferences.memoryMode;
+    preferences.memoryMode = mode;
+    try {
+      await savePreferences();
+    } catch (error) {
+      preferences.memoryMode = previousMode;
+      throw error;
+    }
+    pruneInactiveViews();
+    return preferences.memoryMode;
+  });
+
   ipcMain.handle('account-view:show', (_event, id) => {
     const account = accounts.find((item) => item.id === id);
     if (!account || !mainWindow) throw new Error('Account not found');
     const view = getAccountView(account);
     if (activeViewId && activeViewId !== id) {
       const previous = accountViews.get(activeViewId);
-      if (previous) {
-        mainWindow.removeBrowserView(previous);
-        previous.webContents.destroy();
-        accountViews.delete(activeViewId);
-      }
+      if (previous) mainWindow.removeBrowserView(previous);
     }
     mainWindow.addBrowserView(view);
     activeViewId = id;
+    viewUseOrder = viewUseOrder.filter((accountId) => accountId !== id);
+    viewUseOrder.push(id);
+    pruneInactiveViews();
     return true;
   });
 
@@ -313,12 +360,7 @@ function registerIpc() {
     const index = accounts.findIndex((item) => item.id === id);
     if (index === -1) throw new Error('Account not found');
     const [account] = accounts.splice(index, 1);
-    const view = accountViews.get(account.id);
-    if (view && mainWindow) mainWindow.removeBrowserView(view);
-    if (view) {
-      view.webContents.destroy();
-      accountViews.delete(account.id);
-    }
+    destroyAccountView(account.id);
     const timer = resetTimers.get(account.id);
     if (timer) clearTimeout(timer);
     resetTimers.delete(account.id);
@@ -408,7 +450,9 @@ function registerIpc() {
 
 app.whenReady().then(async () => {
   configPath = path.join(app.getPath('userData'), 'accounts.json');
+  preferencesPath = path.join(app.getPath('userData'), 'preferences.json');
   await loadAccounts();
+  await loadPreferences();
   for (const account of accounts) {
     session.fromPartition(account.partition).setUserAgent(CHROME_USER_AGENT);
     if (account.lastUsage) scheduleResetNotification(account, account.lastUsage);

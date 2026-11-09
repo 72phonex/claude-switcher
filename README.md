@@ -12,7 +12,7 @@ session, so switching accounts does not require signing in again.
 - Local token-usage estimates and limit indicators
 - Desktop notification when a detected Claude usage limit is restored
 - Optional system-tray background mode and launch-at-startup support
-- Low-memory background mode unloads Claude web content while the app is hidden
+- Normal, Balanced, and Ultra-low memory modes control how many inactive account pages stay loaded
 - Automatic usage refresh, account health indicators, and keyboard shortcuts
 - Privacy-safe settings export/import without cookies or login sessions
 - GitHub release checks from inside the app
@@ -48,6 +48,11 @@ notification service.
 
 Closing the window keeps the app in the system tray so reminders can continue.
 Use the tray menu to reopen the window or quit completely.
+
+Choose a memory mode from the Memory button: Normal keeps all inactive account
+pages loaded, Balanced keeps the most recently used inactive page, and
+Ultra-low unloads inactive pages. Account login sessions remain isolated and
+persistent in every mode.
 
 ## Privacy
 

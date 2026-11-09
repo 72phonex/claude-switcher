@@ -46,6 +46,7 @@
           <button class="toolbar-button" id="export-config" title="Export settings">↓ <span>Export</span></button>
           <button class="toolbar-button" id="import-config" title="Import settings">↑ <span>Import</span></button>
           <button class="toolbar-button" id="startup-toggle" title="Launch at startup">Startup</button>
+          <button class="toolbar-button" id="preferences-button" title="Memory settings">Memory</button>
           <button class="toolbar-button" id="check-updates" title="Check for updates">Updates</button>
       </div>
     </header>
@@ -85,6 +86,20 @@
         <button type="button" class="dialog-action danger" id="remove-account">Remove account</button>
       </div>
       <p class="dialog-hint">Removing an account permanently deletes its saved login session from this device.</p>
+    </form>
+  </dialog>
+  <dialog class="memory-dialog" id="preferences-dialog">
+    <form method="dialog" class="memory-panel">
+      <div class="memory-header">
+        <div><strong>Memory settings</strong><span>Choose how many account pages stay loaded.</span></div>
+        <button class="icon-button" value="cancel" aria-label="Close">×</button>
+      </div>
+      <label for="memory-mode">Memory mode</label>
+      <select id="memory-mode">
+        <option value="normal">Normal — keep all inactive pages loaded</option>
+        <option value="balanced">Balanced — keep one inactive page loaded</option>
+        <option value="ultra-low">Ultra-low — unload inactive pages</option>
+      </select>
     </form>
   </dialog>
   <script src="renderer.js"></script>

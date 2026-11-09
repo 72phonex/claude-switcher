@@ -188,6 +188,7 @@ async function renameAccount(account) {
 
 async function init() {
   state.accounts = await window.claudeSwitcher.accounts.list();
+  $('memory-mode').value = await window.claudeSwitcher.memoryMode();
   state.accounts.forEach(createView);
   if (state.accounts[0]) switchAccount(state.accounts[0].id); else renderAccounts();
   window.setInterval(() => {
@@ -240,6 +241,17 @@ $('startup-toggle').addEventListener('click', async () => {
     $('startup-toggle').textContent = enabled ? 'Startup: on' : 'Startup: off';
   } catch (error) {
     window.alert(`Could not update startup setting: ${error.message}`);
+  }
+});
+$('preferences-button').addEventListener('click', () => $('preferences-dialog').showModal());
+$('memory-mode').addEventListener('change', async (event) => {
+  const select = event.currentTarget;
+  const previousMode = await window.claudeSwitcher.memoryMode();
+  try {
+    select.value = await window.claudeSwitcher.setMemoryMode(select.value);
+  } catch (error) {
+    select.value = previousMode;
+    window.alert(`Could not update memory mode: ${error.message}`);
   }
 });
 $('check-updates').addEventListener('click', async () => {
