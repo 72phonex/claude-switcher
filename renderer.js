@@ -2,6 +2,7 @@ const state = { accounts: [], activeId: null, views: new Map(), limited: new Set
 let managedAccount;
 let refreshTimer;
 let usageRefreshInProgress = false;
+let trayRefreshQueued = false;
 const $ = (id) => document.getElementById(id);
 const list = $('account-list');
 
@@ -115,7 +116,10 @@ function renderUsage() {
 }
 
 async function refreshUsage(includeActive = false) {
-  if (usageRefreshInProgress) return;
+  if (usageRefreshInProgress) {
+    if (includeActive) trayRefreshQueued = true;
+    return;
+  }
   usageRefreshInProgress = true;
   try {
     const usageResults = await window.claudeSwitcher.accounts.usage(includeActive);
@@ -126,6 +130,10 @@ async function refreshUsage(includeActive = false) {
     renderAccounts();
   } finally {
     usageRefreshInProgress = false;
+    if (trayRefreshQueued) {
+      trayRefreshQueued = false;
+      refreshUsage(true).catch((error) => console.warn(`Tray usage refresh failed: ${error.message}`));
+    }
   }
 }
 
@@ -213,6 +221,9 @@ async function init() {
   const refreshMinutes = String(await window.claudeSwitcher.usageRefreshMinutes());
   $('usage-refresh').value = refreshMinutes;
   $('usage-refresh').dataset.savedValue = refreshMinutes;
+  const startMinimized = await window.claudeSwitcher.startMinimized();
+  $('start-minimized').checked = startMinimized;
+  $('start-minimized').dataset.savedValue = String(startMinimized);
   state.accounts.forEach(createView);
   if (state.accounts[0]) switchAccount(state.accounts[0].id); else renderAccounts();
   scheduleUsageRefresh(Number($('usage-refresh').value));
@@ -288,6 +299,17 @@ $('usage-refresh').addEventListener('change', async (event) => {
   } catch (error) {
     select.value = String(previousMinutes);
     window.alert(`Could not update usage refresh interval: ${error.message}`);
+  }
+});
+$('start-minimized').addEventListener('change', async (event) => {
+  const checkbox = event.currentTarget;
+  const previousValue = checkbox.dataset.savedValue === 'true';
+  try {
+    checkbox.checked = await window.claudeSwitcher.setStartMinimized(checkbox.checked);
+    checkbox.dataset.savedValue = String(checkbox.checked);
+  } catch (error) {
+    checkbox.checked = previousValue;
+    window.alert(`Could not update startup behavior: ${error.message}`);
   }
 });
 $('check-updates').addEventListener('click', async () => {

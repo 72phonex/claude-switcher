@@ -6,70 +6,55 @@ the app lightweight, private, and reliable on low-spec laptops.
 
 Desktop and performance
 -----------------------
-1. Low-memory mode
-   Offer Normal, Balanced, and Ultra-low memory modes.
+1. Resource monitor
+    Show app memory usage, active sessions, and last refresh time.
 
-2. Configurable usage refresh
-   Let users choose 1, 5, 15, or 30-minute refresh intervals.
-
-3. Background webview unloading
-   Unload inactive Claude webviews while preserving their login sessions.
-
-4. System tray controls
-   Keep the app in the tray with Open, Refresh usage, and Quit actions.
-
-5. Launch at startup
-   Optionally start minimized so reminders work after a system restart.
-
-6. Resource monitor
-   Show app memory usage, active sessions, and last refresh time.
-
-7. Session recovery
-   Detect crashed, blank, or expired sessions and offer a safe reload.
+2. Session recovery
+    Detect crashed, blank, or expired sessions and offer a safe reload.
 
 Account workflow
 ----------------
-8. Account search
-   Search account names quickly when many accounts are configured.
+3. Account search
+    Search account names quickly when many accounts are configured.
 
-9. Favorites and account ordering
-   Pin important accounts and drag them into a preferred order.
+4. Favorites and account ordering
+    Pin important accounts and drag them into a preferred order.
 
-10. Per-account colors and icons
+5. Per-account colors and icons
     Make accounts easier to identify without displaying private email data.
 
-11. Account health dashboard
+6. Account health dashboard
     Show Ready, Limited, Sign-in required, Offline, or Needs attention.
 
-12. Safe settings backup
+7. Safe settings backup
     Export account names and preferences without exporting cookies or sessions.
 
-13. Account import validation
+8. Account import validation
     Validate imported settings before adding them to the local configuration.
 
-14. Inactive-session cleanup
+9. Inactive-session cleanup
     Clear cache for unused accounts while preserving login cookies.
 
 Reminders and notifications
 ---------------------------
-15. Configurable reset reminders
+10. Configurable reset reminders
     Notify at reset time or 5, 15, and 30 minutes before reset.
 
-16. Per-account notification controls
+11. Per-account notification controls
     Enable or disable reminders independently for each account.
 
-17. Snooze reminders
+12. Snooze reminders
     Snooze a notification for 10 minutes, 1 hour, or until reset.
 
-18. Reminder history
+13. Reminder history
     Show the last detected limit, reset time, and notification status locally.
 
 Privacy and reliability
 -----------------------
-19. Encrypted local preferences
+14. Encrypted local preferences
     Protect non-session settings using the operating system secure storage.
 
-20. Offline-friendly status
+15. Offline-friendly status
     Show connectivity state and preserve the app shell when Claude is offline.
 
 Keyboard shortcuts

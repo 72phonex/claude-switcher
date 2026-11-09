@@ -11,7 +11,7 @@ session, so switching accounts does not require signing in again.
 - Account rename, session clearing, and removal controls
 - Local token-usage estimates and limit indicators
 - Desktop notification when a detected Claude usage limit is restored
-- Optional system-tray background mode and launch-at-startup support
+- System-tray controls and launch-at-startup support, including start-minimized option
 - Normal, Balanced, and Ultra-low memory modes control how many inactive account pages stay loaded while visible
 - Configurable automatic usage refresh, account health indicators, and keyboard shortcuts
 - Privacy-safe settings export/import without cookies or login sessions
@@ -51,14 +51,17 @@ Use the tray menu to reopen the window, refresh usage for loaded accounts, or
 quit completely. A tray refresh also loads the active account in the background
 if its page was unloaded.
 
-Choose a memory mode from the Memory button: Normal keeps all inactive account
+Choose a memory mode from Settings: Normal keeps all inactive account
 pages loaded while the window is visible, Balanced keeps the most recently
 used inactive page, and Ultra-low unloads inactive pages. All account pages
 unload when the window is minimized or hidden; their login sessions remain
 isolated and persistent.
 
 Set automatic usage refresh to every 1, 5, 15, or 30 minutes from the same
-Memory settings dialog.
+settings dialog.
+
+Enable Start minimized in Settings to keep startup launches in the tray.
+Reset reminders continue to run while the main window is hidden.
 
 ## Privacy
 

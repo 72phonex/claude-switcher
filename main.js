@@ -12,12 +12,13 @@ let mainWindow;
 let accounts = [];
 let configPath;
 let preferencesPath;
-let preferences = { memoryMode: 'balanced', usageRefreshMinutes: 5 };
+let preferences = { memoryMode: 'balanced', usageRefreshMinutes: 5, startMinimized: false };
 const accountViews = new Map();
 const accountViewLoads = new Map();
 let viewUseOrder = [];
 let activeViewId;
 let attachedViewId;
+let startMinimizedLaunch = false;
 const accountUsage = new Map();
 const resetTimers = new Map();
 let activeViewBounds;
@@ -51,6 +52,7 @@ async function loadPreferences() {
     if ([1, 5, 15, 30].includes(saved.usageRefreshMinutes)) {
       preferences.usageRefreshMinutes = saved.usageRefreshMinutes;
     }
+    if (typeof saved.startMinimized === 'boolean') preferences.startMinimized = saved.startMinimized;
   } catch (error) {
     if (error.code !== 'ENOENT') console.error('Unable to load preferences:', error);
   }
@@ -113,6 +115,7 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
   mainWindow.once('ready-to-show', () => {
+    if (startMinimizedLaunch && !mainWindow.isVisible()) return;
     mainWindow.maximize();
     mainWindow.show();
   });
@@ -176,7 +179,7 @@ function createTray() {
   tray = new Tray(nativeImage.createFromDataURL(icon));
   tray.setToolTip('Claude Switcher');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Open Claude Switcher', click: () => { mainWindow.show(); mainWindow.focus(); } },
+    { label: 'Open Claude Switcher', click: () => { startMinimizedLaunch = false; mainWindow.show(); mainWindow.focus(); } },
     { label: 'Refresh usage', click: () => { mainWindow.webContents.send('app:tray-refresh-usage'); } },
     { type: 'separator' },
     { label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
@@ -245,10 +248,40 @@ function registerIpc() {
     }
     return preferences.usageRefreshMinutes;
   });
+  ipcMain.handle('app:start-minimized', () => preferences.startMinimized);
+  ipcMain.handle('app:set-start-minimized', async (_event, enabled) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid start-minimized setting');
+    const previousSetting = preferences.startMinimized;
+    const startupEnabled = app.getLoginItemSettings().openAtLogin;
+    if (startupEnabled) {
+      app.setLoginItemSettings({
+        openAtLogin: true,
+        args: enabled ? ['--start-minimized'] : []
+      });
+    }
+    preferences.startMinimized = enabled;
+    try {
+      await savePreferences();
+    } catch (error) {
+      preferences.startMinimized = previousSetting;
+      if (startupEnabled) {
+        app.setLoginItemSettings({
+          openAtLogin: true,
+          args: previousSetting ? ['--start-minimized'] : []
+        });
+      }
+      throw error;
+    }
+    return preferences.startMinimized;
+  });
 
   ipcMain.handle('account-view:show', (_event, id) => {
     const account = accounts.find((item) => item.id === id);
     if (!account || !mainWindow) throw new Error('Account not found');
+    if (startMinimizedLaunch && !mainWindow.isVisible()) {
+      activeViewId = id;
+      return true;
+    }
     const view = getAccountView(account);
     if (activeViewId && activeViewId !== id) {
       const previous = accountViews.get(activeViewId);
@@ -498,7 +531,10 @@ function registerIpc() {
   ipcMain.handle('app:startup-status', () => app.getLoginItemSettings().openAtLogin);
   ipcMain.handle('app:set-startup', (_event, enabled) => {
     if (typeof enabled !== 'boolean') throw new Error('Invalid startup setting');
-    app.setLoginItemSettings({ openAtLogin: enabled });
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      args: enabled && preferences.startMinimized ? ['--start-minimized'] : []
+    });
     return app.getLoginItemSettings().openAtLogin;
   });
 
@@ -522,6 +558,9 @@ app.whenReady().then(async () => {
   preferencesPath = path.join(app.getPath('userData'), 'preferences.json');
   await loadAccounts();
   await loadPreferences();
+  const loginSettings = app.getLoginItemSettings();
+  startMinimizedLaunch = preferences.startMinimized &&
+    (loginSettings.wasOpenedAtLogin || process.argv.includes('--start-minimized'));
   for (const account of accounts) {
     session.fromPartition(account.partition).setUserAgent(CHROME_USER_AGENT);
     if (account.lastUsage) scheduleResetNotification(account, account.lastUsage);

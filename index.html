@@ -46,7 +46,7 @@
           <button class="toolbar-button" id="export-config" title="Export settings">↓ <span>Export</span></button>
           <button class="toolbar-button" id="import-config" title="Import settings">↑ <span>Import</span></button>
           <button class="toolbar-button" id="startup-toggle" title="Launch at startup">Startup</button>
-          <button class="toolbar-button" id="preferences-button" title="Memory settings">Memory</button>
+          <button class="toolbar-button" id="preferences-button" title="Application settings">Settings</button>
           <button class="toolbar-button" id="check-updates" title="Check for updates">Updates</button>
       </div>
     </header>
@@ -107,6 +107,10 @@
         <option value="15">Every 15 minutes</option>
         <option value="30">Every 30 minutes</option>
       </select>
+      <label class="setting-checkbox">
+        <input id="start-minimized" type="checkbox">
+        <span>Start minimized to the tray when launched at startup</span>
+      </label>
     </form>
   </dialog>
   <script src="renderer.js"></script>

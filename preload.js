@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld('claudeSwitcher', {
   setMemoryMode: (mode) => ipcRenderer.invoke('app:set-memory-mode', mode),
   usageRefreshMinutes: () => ipcRenderer.invoke('app:usage-refresh-minutes'),
   setUsageRefreshMinutes: (minutes) => ipcRenderer.invoke('app:set-usage-refresh-minutes', minutes),
+  startMinimized: () => ipcRenderer.invoke('app:start-minimized'),
+  setStartMinimized: (enabled) => ipcRenderer.invoke('app:set-start-minimized', enabled),
   onTrayRefreshUsage: (callback) => {
     const listener = () => callback();
     ipcRenderer.on('app:tray-refresh-usage', listener);
