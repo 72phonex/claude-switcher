@@ -16,6 +16,7 @@ let preferences = { memoryMode: 'balanced', usageRefreshMinutes: 5 };
 const accountViews = new Map();
 let viewUseOrder = [];
 let activeViewId;
+let attachedViewId;
 const accountUsage = new Map();
 const resetTimers = new Map();
 let activeViewBounds;
@@ -117,21 +118,30 @@ function createWindow() {
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault();
-      detachActiveView();
+      unloadBackgroundViews();
       mainWindow.hide();
     }
   });
   mainWindow.on('closed', () => { mainWindow = null; });
   mainWindow.on('show', attachActiveView);
+  mainWindow.on('restore', attachActiveView);
+  mainWindow.on('minimize', unloadBackgroundViews);
 }
 
 function destroyAccountView(id) {
   const view = accountViews.get(id);
   if (!view) return;
-  if (mainWindow) mainWindow.removeBrowserView(view);
+  if (mainWindow && attachedViewId === id) {
+    mainWindow.removeBrowserView(view);
+    attachedViewId = undefined;
+  }
   view.webContents.destroy();
   accountViews.delete(id);
   viewUseOrder = viewUseOrder.filter((accountId) => accountId !== id);
+}
+
+function unloadBackgroundViews() {
+  for (const id of accountViews.keys()) destroyAccountView(id);
 }
 
 function pruneInactiveViews() {
@@ -142,16 +152,15 @@ function pruneInactiveViews() {
   inactiveIds.slice(0, Math.max(0, inactiveIds.length - retainedCount)).forEach(destroyAccountView);
 }
 
-function detachActiveView() {
-  if (activeViewId) destroyAccountView(activeViewId);
-}
-
 function attachActiveView() {
   if (!mainWindow || !activeViewId) return;
   const account = accounts.find((item) => item.id === activeViewId);
   if (!account) return;
   const view = getAccountView(account);
-  mainWindow.addBrowserView(view);
+  if (attachedViewId !== activeViewId) {
+    mainWindow.addBrowserView(view);
+    attachedViewId = activeViewId;
+  }
   if (activeViewBounds) view.setBounds(activeViewBounds);
   viewUseOrder = viewUseOrder.filter((accountId) => accountId !== activeViewId);
   viewUseOrder.push(activeViewId);
@@ -230,9 +239,15 @@ function registerIpc() {
     const view = getAccountView(account);
     if (activeViewId && activeViewId !== id) {
       const previous = accountViews.get(activeViewId);
-      if (previous) mainWindow.removeBrowserView(previous);
+      if (previous) {
+        mainWindow.removeBrowserView(previous);
+        attachedViewId = undefined;
+      }
     }
-    mainWindow.addBrowserView(view);
+    if (attachedViewId !== id) {
+      mainWindow.addBrowserView(view);
+      attachedViewId = id;
+    }
     activeViewId = id;
     viewUseOrder = viewUseOrder.filter((accountId) => accountId !== id);
     viewUseOrder.push(id);
@@ -243,7 +258,10 @@ function registerIpc() {
   ipcMain.handle('account-view:hide', () => {
     if (!mainWindow || !activeViewId) return false;
     const view = accountViews.get(activeViewId);
-    if (view) mainWindow.removeBrowserView(view);
+    if (view) {
+      mainWindow.removeBrowserView(view);
+      attachedViewId = undefined;
+    }
     return Boolean(view);
   });
 
