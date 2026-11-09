@@ -114,11 +114,11 @@ function renderUsage() {
     : 'Usage appears here when Claude exposes it';
 }
 
-async function refreshUsage() {
+async function refreshUsage(includeActive = false) {
   if (usageRefreshInProgress) return;
   usageRefreshInProgress = true;
   try {
-    const usageResults = await window.claudeSwitcher.accounts.usage();
+    const usageResults = await window.claudeSwitcher.accounts.usage(includeActive);
     usageResults.forEach((usage) => {
       state.usage.set(usage.id, usage);
       if (usage.limited) state.limited.add(usage.id); else state.limited.delete(usage.id);
@@ -128,6 +128,10 @@ async function refreshUsage() {
     usageRefreshInProgress = false;
   }
 }
+
+window.claudeSwitcher.onTrayRefreshUsage(() => {
+  refreshUsage(true).catch((error) => console.warn(`Tray usage refresh failed: ${error.message}`));
+});
 
 function scheduleUsageRefresh(minutes) {
   if (refreshTimer) clearInterval(refreshTimer);

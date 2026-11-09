@@ -47,7 +47,9 @@ notification service.
 - `Ctrl+R`: reload the active Claude session
 
 Closing the window keeps the app in the system tray so reminders can continue.
-Use the tray menu to reopen the window or quit completely.
+Use the tray menu to reopen the window, refresh usage for loaded accounts, or
+quit completely. A tray refresh also loads the active account in the background
+if its page was unloaded.
 
 Choose a memory mode from the Memory button: Normal keeps all inactive account
 pages loaded while the window is visible, Balanced keeps the most recently

@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('claudeSwitcher', {
     setViewBounds: (bounds) => ipcRenderer.invoke('account-view:bounds', bounds),
     reloadView: () => ipcRenderer.invoke('account-view:reload'),
     openExternal: () => ipcRenderer.invoke('account-view:open-external'),
-    usage: () => ipcRenderer.invoke('account-view:usage'),
+    usage: (includeActive) => ipcRenderer.invoke('account-view:usage', includeActive),
     history: () => ipcRenderer.invoke('account-view:history'),
     openHistory: (url) => ipcRenderer.invoke('account-view:open-history', url)
   },
@@ -26,5 +26,10 @@ contextBridge.exposeInMainWorld('claudeSwitcher', {
   setMemoryMode: (mode) => ipcRenderer.invoke('app:set-memory-mode', mode),
   usageRefreshMinutes: () => ipcRenderer.invoke('app:usage-refresh-minutes'),
   setUsageRefreshMinutes: (minutes) => ipcRenderer.invoke('app:set-usage-refresh-minutes', minutes),
+  onTrayRefreshUsage: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('app:tray-refresh-usage', listener);
+    return () => ipcRenderer.removeListener('app:tray-refresh-usage', listener);
+  },
   checkUpdates: () => ipcRenderer.invoke('app:check-updates')
 });

@@ -14,6 +14,7 @@ let configPath;
 let preferencesPath;
 let preferences = { memoryMode: 'balanced', usageRefreshMinutes: 5 };
 const accountViews = new Map();
+const accountViewLoads = new Map();
 let viewUseOrder = [];
 let activeViewId;
 let attachedViewId;
@@ -137,6 +138,7 @@ function destroyAccountView(id) {
   }
   view.webContents.destroy();
   accountViews.delete(id);
+  accountViewLoads.delete(id);
   viewUseOrder = viewUseOrder.filter((accountId) => accountId !== id);
 }
 
@@ -175,6 +177,7 @@ function createTray() {
   tray.setToolTip('Claude Switcher');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Claude Switcher', click: () => { mainWindow.show(); mainWindow.focus(); } },
+    { label: 'Refresh usage', click: () => { mainWindow.webContents.send('app:tray-refresh-usage'); } },
     { type: 'separator' },
     { label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
   ]));
@@ -194,7 +197,17 @@ function getAccountView(account) {
       }
     });
     view.webContents.setUserAgent(CHROME_USER_AGENT);
-    view.webContents.loadURL(CLAUDE_URL);
+    const loadPromise = view.webContents.loadURL(CLAUDE_URL);
+    accountViewLoads.set(account.id, loadPromise);
+    loadPromise.then(
+      () => {
+        if (accountViewLoads.get(account.id) === loadPromise) accountViewLoads.delete(account.id);
+      },
+      (error) => {
+        if (accountViewLoads.get(account.id) === loadPromise) accountViewLoads.delete(account.id);
+        console.warn(`Could not load Claude for ${account.name}:`, error.message);
+      }
+    );
     accountViews.set(account.id, view);
   }
   return view;
@@ -286,44 +299,66 @@ function registerIpc() {
     return Boolean(view);
   });
 
-  ipcMain.handle('account-view:usage', async () => {
-    const results = [];
-    for (const account of accounts) {
-      const view = accountViews.get(account.id);
-      if (!view || view.webContents.isLoading()) continue;
-      try {
-      const usage = await view.webContents.executeJavaScript(`(() => {
-        const body = document.body ? document.body.innerText : '';
-        const selectors = ['[data-testid*="user-message"]', '[data-is-user="true"]', '[class*="user-message"]'];
-        const nodes = [...new Set(selectors.flatMap((selector) => [...document.querySelectorAll(selector)]))];
-        const messages = nodes.length;
-        const tokens = Math.max(0, Math.round(nodes.reduce((total, node) => total + (node.innerText || '').length, 0) / 4));
-        const reset = body.match(/(?:until|resets? at|available again)\\s+([^\\.\\n]{3,80})/i);
-        const limited = /reached (?:your )?limit|usage limit|try again later/i.test(body);
-        const resetText = reset ? reset[1].trim() : '';
-        let resetAt = resetText ? Date.parse(resetText) : NaN;
-        if (Number.isFinite(resetAt) && resetAt <= Date.now()) resetAt += 24 * 60 * 60 * 1000;
-        const signedOut = /sign in|log in|create an account/i.test(body) && messages === 0;
-        const networkError = /unable to connect|network error|offline|this site can.t be reached/i.test(body);
-        const status = networkError ? 'network-error' : signedOut ? 'signed-out' : limited ? 'limited' : 'ready';
-        return { messages, tokens, resetText, resetAt: Number.isFinite(resetAt) ? resetAt : null, limited, status };
-      })()`, true);
-        accountUsage.set(account.id, usage);
-        account.lastUsage = {
-          limited: usage.limited,
-          resetAt: usage.resetAt,
-          resetText: usage.resetText,
-          status: usage.status,
-          checkedAt: Date.now()
-        };
-        await saveAccounts();
-        scheduleResetNotification(account, usage);
-        results.push({ id: account.id, ...usage });
-      } catch (error) {
-        console.warn(`Could not inspect usage for ${account.name}:`, error.message);
+  ipcMain.handle('account-view:usage', async (_event, includeActive = false) => {
+    if (typeof includeActive !== 'boolean') throw new Error('Invalid usage refresh request');
+    let temporaryViewId;
+    try {
+      if (includeActive && activeViewId && !accountViews.has(activeViewId)) {
+        const account = accounts.find((item) => item.id === activeViewId);
+        if (account) {
+          temporaryViewId = account.id;
+          getAccountView(account);
+          const loadPromise = accountViewLoads.get(account.id);
+          if (loadPromise) await loadPromise;
+        }
+      }
+      const results = [];
+      for (const account of accounts) {
+        const view = accountViews.get(account.id);
+        if (!view || view.webContents.isLoading()) continue;
+        try {
+          const usage = await view.webContents.executeJavaScript(`(() => {
+            const body = document.body ? document.body.innerText : '';
+            const selectors = ['[data-testid*="user-message"]', '[data-is-user="true"]', '[class*="user-message"]'];
+            const nodes = [...new Set(selectors.flatMap((selector) => [...document.querySelectorAll(selector)]))];
+            const messages = nodes.length;
+            const tokens = Math.max(0, Math.round(nodes.reduce((total, node) => total + (node.innerText || '').length, 0) / 4));
+            const reset = body.match(/(?:until|resets? at|available again)\\s+([^\\.\\n]{3,80})/i);
+            const limited = /reached (?:your )?limit|usage limit|try again later/i.test(body);
+            const resetText = reset ? reset[1].trim() : '';
+            let resetAt = resetText ? Date.parse(resetText) : NaN;
+            if (Number.isFinite(resetAt) && resetAt <= Date.now()) resetAt += 24 * 60 * 60 * 1000;
+            const signedOut = /sign in|log in|create an account/i.test(body) && messages === 0;
+            const networkError = /unable to connect|network error|offline|this site can.t be reached/i.test(body);
+            const status = networkError ? 'network-error' : signedOut ? 'signed-out' : limited ? 'limited' : 'ready';
+            return { messages, tokens, resetText, resetAt: Number.isFinite(resetAt) ? resetAt : null, limited, status };
+          })()`, true);
+          accountUsage.set(account.id, usage);
+          account.lastUsage = {
+            limited: usage.limited,
+            resetAt: usage.resetAt,
+            resetText: usage.resetText,
+            status: usage.status,
+            checkedAt: Date.now()
+          };
+          await saveAccounts();
+          scheduleResetNotification(account, usage);
+          results.push({ id: account.id, ...usage });
+        } catch (error) {
+          console.warn(`Could not inspect usage for ${account.name}:`, error.message);
+        }
+      }
+      return results;
+    } finally {
+      if (temporaryViewId && (
+        activeViewId !== temporaryViewId ||
+        !mainWindow ||
+        !mainWindow.isVisible() ||
+        mainWindow.isMinimized()
+      )) {
+        destroyAccountView(temporaryViewId);
       }
     }
-    return results;
   });
 
   ipcMain.handle('account-view:history', async () => {
